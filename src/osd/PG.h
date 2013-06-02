@@ -453,6 +453,14 @@ public:
 
   bool dirty_info, dirty_big_info, dirty_log;
 
+  eversion_t dirty_log_from;   ///< log entries from this version and after are dirty
+
+  void mark_log_dirty_from(eversion_t v) {
+    if (dirty_log_from == eversion_t ||
+	dirty_log_from > v)
+      dirty_log_from = v;
+  }
+
 public:
   // pg state
   pg_info_t        info;

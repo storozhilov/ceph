@@ -556,6 +556,7 @@ void PG::rewind_divergent_log(ObjectStore::Transaction& t, eversion_t newhead)
   dirty_info = true;
   dirty_big_info = true;
   dirty_log = true;
+  dirty_divergent_priors = true;
 }
 
 void PG::merge_log(ObjectStore::Transaction& t,
