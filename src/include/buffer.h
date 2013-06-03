@@ -419,6 +419,7 @@ public:
     ssize_t read_fd(int fd, size_t len);
     int write_file(const char *fn, int mode=0644);
     int write_fd(int fd) const;
+    int pwrite_fd(int fd, uint64_t offset) const;
     __u32 crc32c(__u32 crc) {
       for (std::list<ptr>::const_iterator it = _buffers.begin(); 
 	   it != _buffers.end(); 
