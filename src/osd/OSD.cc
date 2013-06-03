@@ -5496,6 +5496,7 @@ void OSD::handle_pg_create(OpRequestRef op)
 	0, creating_pgs[pgid].acting, creating_pgs[pgid].acting,
 	history, pi,
 	*rctx.transaction);
+      rctx.transaction->create_collection(coll_t(pgid));
       pg->info.last_epoch_started = pg->info.history.last_epoch_started;
       creating_pgs.erase(pgid);
       wake_pg_waiters(pg->info.pgid);
