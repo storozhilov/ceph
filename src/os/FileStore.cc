@@ -2918,6 +2918,18 @@ int FileStore::_write(coll_t cid, const hobject_t& oid,
 
   int64_t actual;
 
+  {
+    int fd = lfn_open(cid, oid, 0, 0644);
+    if (fd < 0) {
+      dout(10) << " file did not exist" << dendl;
+    } else {
+      struct stat st;
+      ::fstat(fd, &st);
+      dout(10) << " file did exist, with size " << st.st_size << dendl;
+      lfn_close(fd);
+    }
+  }
+
   int flags = O_WRONLY|O_CREAT;
   int fd = lfn_open(cid, oid, flags, 0644);
   if (fd < 0) {
