@@ -242,6 +242,10 @@ void AuthMonitor::encode_pending(MonitorDBStore::Transaction *t)
   for (p = pending_auth.begin(); p != pending_auth.end(); ++p)
     p->encode(bl, mon->get_quorum_features());
 
+  if (format_version > 0) {
+    t->put(get_service_name(), "format_version", format_version);
+  }
+
   version_t version = get_version() + 1;
   put_version(t, version, bl);
   put_last_committed(t, version);
@@ -875,4 +879,69 @@ bool AuthMonitor::prepare_global_id(MMonGlobalID *m)
 
   m->put();
   return true;
+}
+
+void AuthMonitor::upgrade_format()
+{
+  dout(10) << __func__ << " format " << get_format_version() << dendl;
+  if (format_version >= 2)
+    return;
+
+  bool changed = false;
+
+  for (map<EntityName, EntityAuth>::iterator p = mon->key_server.secrets_begin();
+       p != mon->key_server.secrets.end();
+       ++p) {
+    // grab mon caps, if any
+    string mon_caps;
+    if (p->second.caps.count("mon") == 0)
+      continue;
+    try {
+      bufferlist::iterator p = p->second.caps["mon"];
+      ::decode(mon_caps, p);
+    }
+    catch (buffer::error) {
+      dout(10) << __func__ << " unable to parse mon cap for " << p->first << dendl;
+      continue;
+    }
+
+    string n = p->first.to_str();
+    string new_caps;
+
+    // set daemon profiles
+    if ((p->first.is_osd() || p->first.is_mds()) &&
+	mon_caps == "allow rwx") {
+      new_caps = string("allow profile ") + string(p->first.get_type_name());
+    }
+
+    // update bootstrap keys
+    if (n == "client.bootstrap-osd") {
+      new_caps = "allow profile bootstrap-osd";
+    }
+    if (n == "client.bootstrap-mds") {
+      new_caps = "allow profile bootstrap-mds";
+    }
+
+    if (new_caps.length() >= 0) {
+      dout(10) << __func__ << " updating " << p->first << " mon cap from " << mon_caps << " to " << new_caps << dendl;
+
+      bufferlist bl;
+      ::encode(new_caps, bl);
+
+      KeyServerData::Incremental auth_inc;
+      auth_inc.name = p->first;
+      auth_inc.auth = p->second;
+      auth_inc.auth.caps["mon"] = bl;
+      auth_inc.op = KeyServerData::AUTH_INC_ADD;
+      push_cephx_inc(auth_inc);
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    // note new format
+    format_version = 2;
+    dout(10) << __func__ << " proposing update to format " << format_version << dendl;
+    propose_pending();
+  }
 }
