@@ -3792,9 +3792,9 @@ void OSD::do_command(Connection *con, tid_t tid, vector<string>& cmd, bufferlist
 
       fout << *pg << std::endl;
       std::map<hobject_t, pg_missing_t::item>::const_iterator mend =
-	pg->missing.missing.end();
+	pg->pg_log.get_missing().missing.end();
       std::map<hobject_t, pg_missing_t::item>::const_iterator mi =
-	pg->missing.missing.begin();
+	pg->pg_log.get_missing().missing.begin();
       for (; mi != mend; ++mi) {
 	fout << mi->first << " -> " << mi->second << std::endl;
 	map<hobject_t, set<int> >::const_iterator mli =

@@ -266,6 +266,7 @@ int ReplicatedPG::get_pgls_filter(bufferlist::iterator& iter, PGLSFilter **pfilt
 int ReplicatedPG::do_command(vector<string>& cmd, ostream& ss,
 			     bufferlist& idata, bufferlist& odata)
 {
+  const pg_missing_t &missing = pg_log.get_missing();
   map<string, cmd_vartype> cmdmap;
   string prefix;
 
