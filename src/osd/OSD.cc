@@ -2080,7 +2080,9 @@ void OSD::handle_pg_peering_evt(
       createmap = get_map(epoch);
     } else {
       assert(old_pg_state);
+      old_pg_state->lock();
       createmap = old_pg_state->get_osdmap();
+      old_pg_state->unlock();
     }
 
     PG::RecoveryCtx rctx = create_context();
@@ -2112,6 +2114,7 @@ void OSD::handle_pg_peering_evt(
     case RES_PARENT: {
       assert(old_pg_state);
       PG::RecoveryCtx rctx = create_context();
+      old_pg_state->lock();
       PG *parent = _create_lock_pg(
 	createmap,
 	resurrected,
@@ -2125,6 +2128,7 @@ void OSD::handle_pg_peering_evt(
 	old_pg_state->past_intervals,
 	*rctx.transaction
 	);
+      old_pg_state->unlock();
       parent->handle_create(&rctx);
       parent->write_if_dirty(*rctx.transaction);
       dispatch_context(rctx, parent, osdmap);
