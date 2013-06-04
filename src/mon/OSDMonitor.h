@@ -286,6 +286,7 @@ private:
 
   bool preprocess_remove_snaps(class MRemoveSnaps *m);
   bool prepare_remove_snaps(class MRemoveSnaps *m);
+  int blacklist_remove(entity_addr_t&, std::stringstream&);
 
  public:
   OSDMonitor(Monitor *mn, Paxos *p, string service_name)

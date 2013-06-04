@@ -2508,6 +2508,21 @@ void OSDMonitor::parse_loc_map(const vector<string>& args, int start, map<string
   }
 }
 
+int OSDMonitor::blacklist_remove(entity_addr_t &addr, stringstream &ss)
+{
+  if (osdmap.is_blacklisted(addr) || 
+      pending_inc.new_blacklist.count(addr)) {
+    if (osdmap.is_blacklisted(addr))
+      pending_inc.old_blacklist.push_back(addr);
+    else
+      pending_inc.new_blacklist.erase(addr);
+    ss << "un-blacklisting " << addr;
+    return 0;
+  }
+  ss << addr << " isn't blacklisted";
+  return -ENOENT;
+}
+
 bool OSDMonitor::prepare_command(MMonCommand *m)
 {
   bool ret = false;
@@ -3208,6 +3223,27 @@ bool OSDMonitor::prepare_command(MMonCommand *m)
 	return true;
       }
     }
+    else if (m->cmd[1] == "blacklist_self" && m->cmd.size() >= 3) {
+      entity_addr_t addr = m->get_connection()->get_peer_addr();
+      if (m->cmd[2] == "set") {
+        utime_t expires = ceph_clock_now(g_ceph_context);
+        double d = 60*60;  // 1 hour default
+        if (m->cmd.size() == 4)
+          d = atof(m->cmd[3].c_str());
+        expires += d;
+        pending_inc.new_blacklist[addr] = expires;
+        ss << "blacklisting " << addr << " until " << expires << " (" << d << " sec)";
+      } else {
+        err = blacklist_remove(addr, ss);
+        if (err) {
+          err = 0;
+          goto out;
+        }
+      }
+      getline(ss, rs);
+      wait_for_finished_proposal(new Monitor::C_Command(mon, m, 0, rs, get_version()));
+      return true;
+    }
     else if (m->cmd[1] == "blacklist" && m->cmd.size() >= 4) {
       entity_addr_t addr;
       if (!addr.parse(m->cmd[3].c_str(), 0))
@@ -3226,20 +3262,14 @@ bool OSDMonitor::prepare_command(MMonCommand *m)
 	wait_for_finished_proposal(new Monitor::C_Command(mon, m, 0, rs, get_version()));
 	return true;
       } else if (m->cmd[2] == "rm") {
-	if (osdmap.is_blacklisted(addr) || 
-	    pending_inc.new_blacklist.count(addr)) {
-	  if (osdmap.is_blacklisted(addr))
-	    pending_inc.old_blacklist.push_back(addr);
-	  else
-	    pending_inc.new_blacklist.erase(addr);
-	  ss << "un-blacklisting " << addr;
-	  getline(ss, rs);
-	  wait_for_finished_proposal(new Monitor::C_Command(mon, m, 0, rs, get_version()));
-	  return true;
-	}
-	ss << addr << " isn't blacklisted";
-	err = 0;
-	goto out;
+        err = blacklist_remove(addr, ss);
+        if (err) {
+          err = 0;
+          goto out;
+        }
+	getline(ss, rs);
+	wait_for_finished_proposal(new Monitor::C_Command(mon, m, 0, rs, get_version()));
+	return true;
       }
     }
     else if (m->cmd[1] == "pool" && m->cmd.size() >= 3) {
