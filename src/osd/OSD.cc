@@ -1656,6 +1656,10 @@ OSD::res_result OSD::_try_resurrect_pg(
   if (!df)
     return RES_NONE; // good to go
 
+  df->old_pg_state->lock();
+  OSDMapRef create_map = df->old_pg_state->get_osdmap();
+  df->old_pg_state->unlock();
+
   set<pg_t> children;
   if (cur == pgid) {
     if (df->try_stop_deletion()) {
@@ -1670,7 +1674,7 @@ OSD::res_result OSD::_try_resurrect_pg(
       service.deleting_pgs.remove(pgid);
       return RES_NONE;
     }
-  } else if (cur.is_split(df->old_pg_state->get_osdmap()->get_pg_num(cur.pool()),
+  } else if (cur.is_split(create_map->get_pg_num(cur.pool()),
 			  curmap->get_pg_num(cur.pool()),
 			  &children) &&
 	     children.count(pgid)) {
@@ -2146,8 +2150,7 @@ void OSD::handle_pg_peering_evt(
       parent->unlock();
       return;
     }
-  }
-
+    }
   } else {
     // already had it.  did the mapping change?
     PG *pg = _lookup_lock_pg(info.pgid);
