@@ -2928,22 +2928,23 @@ int FileStore::_write(coll_t cid, const hobject_t& oid,
   }
     
   // seek
-  actual = ::lseek64(fd, offset, SEEK_SET);
+  actual = ::lseek64(fd, 1234567ull, SEEK_SET);
   if (actual < 0) {
     r = -errno;
     dout(0) << "write lseek64 to " << offset << " failed: " << cpp_strerror(r) << dendl;
     lfn_close(fd);
     goto out;
   }
-  if (actual != (int64_t)offset) {
+  /*  if (actual != (int64_t)offset) {
     dout(0) << "write lseek64 to " << offset << " gave bad offset " << actual << dendl;
     r = -EIO;
     lfn_close(fd);
     goto out;
-  }
+    }*/
+  dout(20) << "write lseek fd " << fd << dendl;
 
   // write
-  r = bl.write_fd(fd);
+  r = bl.pwrite_fd(fd, offset);
   if (r == 0)
     r = bl.length();
 
