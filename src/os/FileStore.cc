@@ -2925,7 +2925,7 @@ int FileStore::_write(coll_t cid, const hobject_t& oid,
     } else {
       struct stat st;
       ::fstat(fd, &st);
-      dout(10) << " file did exist, with size " << st.st_size << dendl;
+      dout(10) << " file did exist, with size " << st.st_size << " blocks " << st.st_blocks << dendl;
       lfn_close(fd);
     }
   }
