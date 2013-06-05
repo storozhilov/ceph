@@ -545,19 +545,12 @@ public:
    * We consider to be writeable iff:
    *
    *  - we are not proposing a new version;
-   *  - our monitor is the leader;
-   *  - we have a valid lease;
-   *  - Paxos is not boostrapping.
-   *  - Paxos is not recovering.
-   *  - we are ready to be written to -- i.e., we have a pending value.
+   *  - paxos is writeable
    *
    * @returns true if writeable; false otherwise
    */
   bool is_writeable() {
-    return (is_active()
-        && mon->is_leader()
-        && paxos->is_lease_valid()
-        && is_write_ready());
+    return !is_proposing() && paxos->is_writeable();
   }
 
   /**
@@ -621,12 +614,10 @@ public:
    * @param c The callback to be awaken once we become writeable.
    */
   void wait_for_writeable(Context *c) {
-    if (!is_proposing()) {
+    if (is_proposing())
+      wait_for_finished_proposal(c);
+    else
       paxos->wait_for_writeable(c);
-      return;
-    }
-
-    wait_for_finished_proposal(c);
   }
 
   /**
